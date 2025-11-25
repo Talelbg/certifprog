@@ -17,6 +17,7 @@ import {
     AdminUser,
     CommunityMasterRecord,
 } from './schema';
+import { MOCK_ADMIN_TEAM } from '../constants';
 
 // ============================================================================
 // GENERIC STORAGE OPERATIONS
@@ -357,8 +358,6 @@ export const Campaigns = {
 // ============================================================================
 // ADMIN OPERATIONS
 // ============================================================================
-
-import { MOCK_ADMIN_TEAM } from '../constants';
 
 export const Admins = {
     /**
