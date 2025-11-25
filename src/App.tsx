@@ -11,6 +11,7 @@ import { SmartOutreach } from './components/SmartOutreach';
 import { AdminSettings } from './components/AdminSettings';
 import { Reporting } from './components/Reporting';
 import { UserProfile } from './components/UserProfile';
+import { LoginPage } from './components/LoginPage';
 import { 
   DeveloperRecord, 
   DatasetVersion, 
@@ -25,6 +26,9 @@ import { Database, ChevronDown, Layers, Sun, Moon, CheckCircle } from 'lucide-re
 import { LocalDB } from './services/localDatabase';
 
 function App() {
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'));
+
   const [currentView, setCurrentView] = useState('dashboard');
   
   // Loaded from API
@@ -45,9 +49,8 @@ function App() {
   // Track if initial load is complete to avoid unnecessary API saves
   const isInitialLoadRef = useRef(true);
 
-  // --- INITIALIZATION: Load from API ---
+  // --- INITIALIZATION: Load Theme ---
   useEffect(() => {
-    // Theme
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
@@ -57,8 +60,12 @@ function App() {
       setIsDarkMode(false);
       document.documentElement.classList.remove('dark');
     }
+  }, []);
 
-    // Load Data from API
+  // --- ASYNC DATA LOADING: Only run when authenticated ---
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
     const loadData = async () => {
       const [adminsData, invoicesData, agreementsData, eventsData, campaignsData, registryData, developersData] = await Promise.all([
         LocalDB.getAdmins(),
@@ -95,7 +102,13 @@ function App() {
     };
     
     loadData();
-  }, []);
+  }, [isAuthenticated]);
+
+  // Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
+  };
 
   // --- PERSISTENCE EFFECTS (skip during initial load) ---
   useEffect(() => { if(!isInitialLoadRef.current && admins.length) LocalDB.saveAdmins(admins); }, [admins]);
@@ -109,6 +122,11 @@ function App() {
     const allDevelopers = versions.flatMap(v => v.data);
     if(allDevelopers.length) LocalDB.saveDevelopers(allDevelopers); 
   }, [versions]);
+
+  // If not authenticated, show login page
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={(_token: string) => setIsAuthenticated(true)} />;
+  }
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
@@ -220,7 +238,7 @@ function App() {
 
   return (
     <div className="flex bg-slate-50 dark:bg-[#141319] min-h-screen font-sans text-slate-900 dark:text-slate-200 selection:bg-[#2a00ff] selection:text-white transition-colors duration-300">
-      <Sidebar currentView={currentView} setCurrentView={handleSidebarNavigate} />
+      <Sidebar currentView={currentView} setCurrentView={handleSidebarNavigate} onLogout={handleLogout} />
       
       <main className="flex-1 h-screen overflow-y-auto relative scroll-smooth">
         {/* Ambient Background Glow (Dark Mode Only) */}
