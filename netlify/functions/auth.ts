@@ -43,7 +43,10 @@ export const handler: Handler = async (
   }
 
   try {
-    const result = await query<AdminRow>('SELECT * FROM admins WHERE email = $1', [email]);
+    const result = await query<AdminRow>(
+      'SELECT id, email, password, role FROM admins WHERE email = $1',
+      [email]
+    );
 
     if (result.rows.length === 0) {
       return {
@@ -62,9 +65,17 @@ export const handler: Handler = async (
       };
     }
 
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET environment variable is not set');
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'Internal server error' }),
+      };
+    }
+
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET as string,
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
