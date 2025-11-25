@@ -11,16 +11,36 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
     };
   }
 
+  if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET environment variable is not configured');
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Internal server error' }),
+    };
+  }
+
+  let email: string;
+  let password: string;
+
   try {
-    const { email, password } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
+    email = body.email;
+    password = body.password;
+  } catch {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Invalid request body' }),
+    };
+  }
 
-    if (!email || !password) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Email and password are required' }),
-      };
-    }
+  if (!email || !password) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Email and password are required' }),
+    };
+  }
 
+  try {
     const result = await query('SELECT * FROM admins WHERE email = $1', [email]);
 
     if (result.rows.length === 0) {
@@ -42,7 +62,7 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET as string,
+      process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
