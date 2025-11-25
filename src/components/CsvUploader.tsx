@@ -29,29 +29,14 @@ export const CsvUploader: React.FC<CsvUploaderProps> = ({
   const [loadedCount, setLoadedCount] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // --- LOCAL DB SYNC LOGIC ---
-  const saveToLocalDb = (fName: string, data: DeveloperRecord[]) => {
+  // --- API SYNC LOGIC ---
+  const saveToApi = async (data: DeveloperRecord[]) => {
       try {
           setIsSaving(true);
-          
-          const newVersion: DatasetVersion = {
-              id: `ver_${Date.now()}`,
-              fileName: fName,
-              uploadDate: new Date().toISOString(),
-              recordCount: data.length,
-              data: data
-          };
-
-          LocalDB.saveDatasetVersion(newVersion);
-          
-          // Notify parent to reload versions list if needed, 
-          // though usually parent manages state. 
-          // In this app structure, App.tsx manages the state, 
-          // so we rely on onDataLoaded to pass data up.
-          
+          await LocalDB.saveDevelopers(data);
           setIsSaving(false);
       } catch (error) {
-          console.error("Local Save Failed:", error);
+          console.error("API Save Failed:", error);
           setIsSaving(false);
       }
   };
@@ -284,8 +269,8 @@ export const CsvUploader: React.FC<CsvUploaderProps> = ({
                 // 1. Pass data to parent (App) to render immediately
                 onDataLoaded(processed, fName); 
                 
-                // 2. Persist to LocalDB
-                saveToLocalDb(fName, processed);
+                // 2. Persist to API
+                saveToApi(processed);
 
                 setIsProcessing(false);
                 setStatusMessage('Complete');
@@ -330,7 +315,7 @@ export const CsvUploader: React.FC<CsvUploaderProps> = ({
                 ) : isProcessing ? (
                     statusMessage
                 ) : (
-                    "Upload the Master CSV (Max 100MB). Auto-detects 'Email' & 'Code', fixes timestamps, flags fraud, and saves to Local DB."
+                    "Upload the Master CSV (Max 100MB). Auto-detects 'Email' & 'Code', fixes timestamps, flags fraud, and saves to API."
                 )}
             </p>
             </div>
@@ -371,11 +356,11 @@ export const CsvUploader: React.FC<CsvUploaderProps> = ({
                     
                     {isSaving ? (
                          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 text-xs font-bold animate-pulse">
-                             <Save className="w-3 h-3" /> Saving to Local Database...
+                             <Save className="w-3 h-3" /> Saving to API...
                          </div>
                     ) : (
                          <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                             <Database className="w-3 h-3" /> Saved to Browser Storage
+                             <Database className="w-3 h-3" /> Saved to API
                          </div>
                     )}
                 </div>

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { MembershipDashboard } from './components/MembershipDashboard';
@@ -27,22 +27,25 @@ import { LocalDB } from './services/localDatabase';
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   
-  // Loaded from LocalDB
+  // Loaded from API
   const [versions, setVersions] = useState<DatasetVersion[]>([]);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
   
   const [viewParams, setViewParams] = useState<any>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // --- GLOBAL PERSISTENT STATE (Loaded from LocalDB) ---
+  // --- GLOBAL PERSISTENT STATE (Loaded from API) ---
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [agreements, setAgreements] = useState<CommunityAgreement[]>([]);
   const [events, setEvents] = useState<CommunityEvent[]>([]);
   const [campaigns, setCampaigns] = useState<OutreachCampaign[]>([]);
   const [masterRegistry, setMasterRegistry] = useState<CommunityMasterRecord[]>([]);
+  
+  // Track if initial load is complete to avoid unnecessary API saves
+  const isInitialLoadRef = useRef(true);
 
-  // --- INITIALIZATION: Load from Local Database ---
+  // --- INITIALIZATION: Load from API ---
   useEffect(() => {
     // Theme
     const savedTheme = localStorage.getItem('theme');
@@ -55,28 +58,57 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
 
-    // Load Data
-    setAdmins(LocalDB.getAdmins());
-    setInvoices(LocalDB.getInvoices());
-    setAgreements(LocalDB.getAgreements());
-    setEvents(LocalDB.getEvents());
-    setCampaigns(LocalDB.getCampaigns());
-    setMasterRegistry(LocalDB.getMasterRegistry());
+    // Load Data from API
+    const loadData = async () => {
+      const [adminsData, invoicesData, agreementsData, eventsData, campaignsData, registryData, developersData] = await Promise.all([
+        LocalDB.getAdmins(),
+        LocalDB.getInvoices(),
+        LocalDB.getAgreements(),
+        LocalDB.getEvents(),
+        LocalDB.getCampaigns(),
+        LocalDB.getMasterRegistry(),
+        LocalDB.getDevelopers()
+      ]);
+      
+      setAdmins(adminsData);
+      setInvoices(invoicesData);
+      setAgreements(agreementsData);
+      setEvents(eventsData);
+      setCampaigns(campaignsData);
+      setMasterRegistry(registryData);
+      
+      // Create a version from developers data if available
+      if (developersData.length > 0) {
+        const version: DatasetVersion = {
+          id: 'api_developers',
+          fileName: 'API Data',
+          uploadDate: new Date().toISOString(),
+          recordCount: developersData.length,
+          data: developersData
+        };
+        setVersions([version]);
+        setActiveVersionId(version.id);
+      }
+      
+      // Mark initial load as complete
+      isInitialLoadRef.current = false;
+    };
     
-    const savedVersions = LocalDB.getDatasetVersions();
-    setVersions(savedVersions);
-    if (savedVersions.length > 0) {
-        setActiveVersionId(savedVersions[0].id);
-    }
+    loadData();
   }, []);
 
-  // --- PERSISTENCE EFFECTS ---
-  useEffect(() => { if(admins.length) LocalDB.saveAdmins(admins); }, [admins]);
-  useEffect(() => { if(invoices.length) LocalDB.saveInvoices(invoices); }, [invoices]);
-  useEffect(() => { if(agreements.length) LocalDB.saveAgreements(agreements); }, [agreements]);
-  useEffect(() => { if(events.length) LocalDB.saveEvents(events); }, [events]);
-  useEffect(() => { if(campaigns.length) LocalDB.saveCampaigns(campaigns); }, [campaigns]);
-  useEffect(() => { if(masterRegistry.length) LocalDB.saveMasterRegistry(masterRegistry); }, [masterRegistry]);
+  // --- PERSISTENCE EFFECTS (skip during initial load) ---
+  useEffect(() => { if(!isInitialLoadRef.current && admins.length) LocalDB.saveAdmins(admins); }, [admins]);
+  useEffect(() => { if(!isInitialLoadRef.current && invoices.length) LocalDB.saveInvoices(invoices); }, [invoices]);
+  useEffect(() => { if(!isInitialLoadRef.current && agreements.length) LocalDB.saveAgreements(agreements); }, [agreements]);
+  useEffect(() => { if(!isInitialLoadRef.current && events.length) LocalDB.saveEvents(events); }, [events]);
+  useEffect(() => { if(!isInitialLoadRef.current && campaigns.length) LocalDB.saveCampaigns(campaigns); }, [campaigns]);
+  useEffect(() => { if(!isInitialLoadRef.current && masterRegistry.length) LocalDB.saveMasterRegistry(masterRegistry); }, [masterRegistry]);
+  useEffect(() => { 
+    if (isInitialLoadRef.current) return;
+    const allDevelopers = versions.flatMap(v => v.data);
+    if(allDevelopers.length) LocalDB.saveDevelopers(allDevelopers); 
+  }, [versions]);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
@@ -126,7 +158,6 @@ function App() {
   const handleSwitchVersion = (id: string) => setActiveVersionId(id);
   
   const handleDeleteVersion = (id: string) => {
-      LocalDB.deleteDatasetVersion(id); // Delete from DB
       const newVersions = versions.filter(v => v.id !== id);
       setVersions(newVersions);
       if (activeVersionId === id) setActiveVersionId(newVersions.length > 0 ? newVersions[0].id : null);
