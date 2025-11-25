@@ -42,7 +42,7 @@ function App() {
   const [campaigns, setCampaigns] = useState<OutreachCampaign[]>([]);
   const [masterRegistry, setMasterRegistry] = useState<CommunityMasterRecord[]>([]);
 
-  // --- INITIALIZATION: Load from Local Database ---
+  // --- INITIALIZATION: Load from API ---
   useEffect(() => {
     // Theme
     const savedTheme = localStorage.getItem('theme');
@@ -55,19 +55,40 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
 
-    // Load Data
-    setAdmins(LocalDB.getAdmins());
-    setInvoices(LocalDB.getInvoices());
-    setAgreements(LocalDB.getAgreements());
-    setEvents(LocalDB.getEvents());
-    setCampaigns(LocalDB.getCampaigns());
-    setMasterRegistry(LocalDB.getMasterRegistry());
+    // Load Data from API
+    const loadData = async () => {
+      const [adminsData, invoicesData, agreementsData, eventsData, campaignsData, registryData, developersData] = await Promise.all([
+        LocalDB.getAdmins(),
+        LocalDB.getInvoices(),
+        LocalDB.getAgreements(),
+        LocalDB.getEvents(),
+        LocalDB.getCampaigns(),
+        LocalDB.getMasterRegistry(),
+        LocalDB.getDevelopers()
+      ]);
+      
+      setAdmins(adminsData);
+      setInvoices(invoicesData);
+      setAgreements(agreementsData);
+      setEvents(eventsData);
+      setCampaigns(campaignsData);
+      setMasterRegistry(registryData);
+      
+      // Create a version from developers data if available
+      if (developersData.length > 0) {
+        const version: DatasetVersion = {
+          id: 'api_developers',
+          fileName: 'API Data',
+          uploadDate: new Date().toISOString(),
+          recordCount: developersData.length,
+          data: developersData
+        };
+        setVersions([version]);
+        setActiveVersionId(version.id);
+      }
+    };
     
-    const savedVersions = LocalDB.getDatasetVersions();
-    setVersions(savedVersions);
-    if (savedVersions.length > 0) {
-        setActiveVersionId(savedVersions[0].id);
-    }
+    loadData();
   }, []);
 
   // --- PERSISTENCE EFFECTS ---
@@ -77,6 +98,10 @@ function App() {
   useEffect(() => { if(events.length) LocalDB.saveEvents(events); }, [events]);
   useEffect(() => { if(campaigns.length) LocalDB.saveCampaigns(campaigns); }, [campaigns]);
   useEffect(() => { if(masterRegistry.length) LocalDB.saveMasterRegistry(masterRegistry); }, [masterRegistry]);
+  useEffect(() => { 
+    const allDevelopers = versions.flatMap(v => v.data);
+    if(allDevelopers.length) LocalDB.saveDevelopers(allDevelopers); 
+  }, [versions]);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
@@ -126,7 +151,6 @@ function App() {
   const handleSwitchVersion = (id: string) => setActiveVersionId(id);
   
   const handleDeleteVersion = (id: string) => {
-      LocalDB.deleteDatasetVersion(id); // Delete from DB
       const newVersions = versions.filter(v => v.id !== id);
       setVersions(newVersions);
       if (activeVersionId === id) setActiveVersionId(newVersions.length > 0 ? newVersions[0].id : null);
