@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { MembershipDashboard } from './components/MembershipDashboard';
@@ -27,20 +27,23 @@ import { LocalDB } from './services/localDatabase';
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   
-  // Loaded from LocalDB
+  // Loaded from API
   const [versions, setVersions] = useState<DatasetVersion[]>([]);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
   
   const [viewParams, setViewParams] = useState<any>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // --- GLOBAL PERSISTENT STATE (Loaded from LocalDB) ---
+  // --- GLOBAL PERSISTENT STATE (Loaded from API) ---
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [agreements, setAgreements] = useState<CommunityAgreement[]>([]);
   const [events, setEvents] = useState<CommunityEvent[]>([]);
   const [campaigns, setCampaigns] = useState<OutreachCampaign[]>([]);
   const [masterRegistry, setMasterRegistry] = useState<CommunityMasterRecord[]>([]);
+  
+  // Track if initial load is complete to avoid unnecessary API saves
+  const isInitialLoadRef = useRef(true);
 
   // --- INITIALIZATION: Load from API ---
   useEffect(() => {
@@ -86,19 +89,23 @@ function App() {
         setVersions([version]);
         setActiveVersionId(version.id);
       }
+      
+      // Mark initial load as complete
+      isInitialLoadRef.current = false;
     };
     
     loadData();
   }, []);
 
-  // --- PERSISTENCE EFFECTS ---
-  useEffect(() => { if(admins.length) LocalDB.saveAdmins(admins); }, [admins]);
-  useEffect(() => { if(invoices.length) LocalDB.saveInvoices(invoices); }, [invoices]);
-  useEffect(() => { if(agreements.length) LocalDB.saveAgreements(agreements); }, [agreements]);
-  useEffect(() => { if(events.length) LocalDB.saveEvents(events); }, [events]);
-  useEffect(() => { if(campaigns.length) LocalDB.saveCampaigns(campaigns); }, [campaigns]);
-  useEffect(() => { if(masterRegistry.length) LocalDB.saveMasterRegistry(masterRegistry); }, [masterRegistry]);
+  // --- PERSISTENCE EFFECTS (skip during initial load) ---
+  useEffect(() => { if(!isInitialLoadRef.current && admins.length) LocalDB.saveAdmins(admins); }, [admins]);
+  useEffect(() => { if(!isInitialLoadRef.current && invoices.length) LocalDB.saveInvoices(invoices); }, [invoices]);
+  useEffect(() => { if(!isInitialLoadRef.current && agreements.length) LocalDB.saveAgreements(agreements); }, [agreements]);
+  useEffect(() => { if(!isInitialLoadRef.current && events.length) LocalDB.saveEvents(events); }, [events]);
+  useEffect(() => { if(!isInitialLoadRef.current && campaigns.length) LocalDB.saveCampaigns(campaigns); }, [campaigns]);
+  useEffect(() => { if(!isInitialLoadRef.current && masterRegistry.length) LocalDB.saveMasterRegistry(masterRegistry); }, [masterRegistry]);
   useEffect(() => { 
+    if (isInitialLoadRef.current) return;
     const allDevelopers = versions.flatMap(v => v.data);
     if(allDevelopers.length) LocalDB.saveDevelopers(allDevelopers); 
   }, [versions]);

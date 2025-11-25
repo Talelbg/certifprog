@@ -29,11 +29,17 @@ class ApiService {
             headers,
         };
         
+        // For POST/PUT/PATCH, type goes in body; for GET, type goes in query string
+        let url = API_BASE;
+        if (method === 'GET') {
+            url = `${API_BASE}?type=${type}`;
+        }
+        
         if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
             options.body = JSON.stringify(body);
         }
         
-        const response = await fetch(`${API_BASE}?type=${type}`, options);
+        const response = await fetch(url, options);
         
         if (response.status === 401) {
             window.location.href = '/';
