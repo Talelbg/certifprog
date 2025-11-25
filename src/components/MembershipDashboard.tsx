@@ -249,4 +249,32 @@ export const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ data, 
             {/* Funnel / Pie Chart */}
             <div className="glass-card p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                 <h3 className="font-bold text-slate-800 dark:text-white mb-2">Program Composition</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">Ratio of Total Enrolled vs. Accepted Members</p
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">Ratio of Total Enrolled vs. Accepted Members</p>
+                <div className="h-64">
+                    {funnelData.length > 0 && (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={funnelData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {funnelData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Legend />
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    )}
+                </div>
+            </div>
+        </div>
+    </div>
+  );
+};
