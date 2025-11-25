@@ -1,13 +1,14 @@
 
 import React from 'react';
-import { LayoutDashboard, FileText, Users, Calendar, ShieldAlert, Send, Crown, BarChart, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Calendar, ShieldAlert, Send, Crown, BarChart, ChevronRight, LogOut } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
   setCurrentView: (view: string) => void;
+  onLogout?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, onLogout }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'membership', label: 'Membership', icon: Crown },
@@ -93,6 +94,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
             </div>
           </div>
         </button>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center lg:justify-start gap-3 p-3 mt-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all group"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="hidden lg:block text-sm font-medium">Logout</span>
+          </button>
+        )}
       </div>
     </div>
   );
