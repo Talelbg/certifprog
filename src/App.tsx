@@ -125,7 +125,7 @@ function App() {
 
   // If not authenticated, show login page
   if (!isAuthenticated) {
-    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+    return <LoginPage onLogin={(_token: string) => setIsAuthenticated(true)} />;
   }
 
   const toggleTheme = () => {
