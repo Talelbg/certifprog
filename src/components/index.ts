@@ -3,6 +3,7 @@ export { CsvUploader } from './CsvUploader';
 export { Dashboard } from './Dashboard';
 export { EventManagement } from './EventManagement';
 export { Invoicing } from './Invoicing';
+export { LoginPage } from './LoginPage';
 export { MembershipDashboard } from './MembershipDashboard';
 export { Reporting } from './Reporting';
 export { Sidebar } from './Sidebar';
